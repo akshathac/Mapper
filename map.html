@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="favicon.ico">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+
+    <!-- vector map CSS -->
+    <link href="assets/html/vendors/bower_components/jasny-bootstrap/dist/css/jasny-bootstrap.min.css" rel="stylesheet" type="text/css"/>
+
+
+
+    <!-- Custom CSS -->
+    <link href="assets/html/dist/css/style.css" rel="stylesheet" type="text/css">
+    <!-- jQuery -->
+    <script src="assets/html/vendors/bower_components/jquery/dist/jquery.min.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="assets/html/vendors/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="assets/html/vendors/bower_components/jasny-bootstrap/dist/js/jasny-bootstrap.min.js"></script>
+
+    <!-- Slimscroll JavaScript -->
+    <script src="assets/html/dist/js/jquery.slimscroll.js"></script>
+
+    <!-- Fancy Dropdown JS -->
+    <script src="assets/html/dist/js/dropdown-bootstrap-extended.js"></script>
+
+    <!-- Init JavaScript -->
+    <script src="assets/html/dist/js/init.js"></script>
+</head>
+<body>
+<div class="wrapper pa-0">
+
+    <!-- Main Content -->
+    <div class="page-wrapper pa-0 ma-0">
+        <div class="container-fluid  bg-dark">
+<h3>My Google Maps Demo</h3>
+            <button class="btn btn-default btn-anim" data-toggle="modal" data-target="#responsive-modal"><i class="icon-heart"></i><span class="btn-text">add to wishlist</span></button>
+<div id="responsive-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                <h5 class="modal-title">Modal Content is Responsive</h5>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <label for="location-name" class="control-label mb-10">Name:</label>
+                        <input type="text" class="form-control" id="location-name">
+                    </div>
+                    <div class="form-group">
+                        <label for="address-text" class="control-label mb-10">Address:</label>
+                        <input type="text" class="form-control" id="address-text">
+                    </div>
+                    <div class="form-group">
+                        <label for="source-text" class="control-label mb-10">Source:</label>
+                        <input type="text" class="form-control" id="source-text">
+                    </div>
+                    <div class="form-group">
+                        <label for="type-text" class="control-label mb-10">Type:</label>
+                        <input type="text" class="form-control" id="type-text">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-danger" id="Save">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+            <!-- Row -->
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="panel panel-default card-view">
+                        <div class="panel-wrapper collapse in">
+                            <div class="panel-body">
+                                <div id="map" style="height:500px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /Row -->
+        </div>
+    </div>
+    </div>
+<script>
+    var geocoder;
+    var marker;
+    var infowindow;
+    var map;
+    function initMap() {
+        $.ajax({
+            url:"map.php",
+            dataType:"json",
+            success: function (data) {
+                var bounds = new google.maps.LatLngBounds();
+                var mapOptions = {
+                    mapTypeId: 'roadmap'
+                };
+                geocoder = new google.maps.Geocoder();
+                map = new google.maps.Map(document.getElementById('map'),mapOptions);
+                map.setTilt(45);
+                $.each(data, function(index, element) {
+                    var uluru = new google.maps.LatLng( parseFloat(element.lat), parseFloat(element.lng));
+                    bounds.extend(uluru);
+                    var contentString = '<div id="content">'+
+                            '<div id="siteNotice">'+
+                            '</div>'+
+                            '<h4 id="firstHeading" class="firstHeading">'+element.name+'</h4>'+
+                            '<h6>'+element.type+'</h6>'+
+                            '<div id="bodyContent">'+
+                            '<p>'+element.address+'</p>'+
+                            '<p>Attribution: <a href="'+element.source+'"></a> '+element.source+
+                            '</p>'+
+                            '</div>'+
+                            '</div>';
+                    marker = new google.maps.Marker({
+                        position: uluru,
+                        map: map,
+                        title:element.name,
+                    });
+                    infowindow = new google.maps.InfoWindow({
+                        content: contentString,
+                        position: uluru,
+                    });
+
+                    google.maps.event.addListener(marker, 'click', (function(mm, tt) {
+                        return function() {
+                        infowindow.setContent(tt);
+                        infowindow.open(map,mm);
+                        }
+                    })(marker,contentString));
+                });
+                map.fitBounds(bounds);
+            }
+        });
+
+    }
+    // Shorthand for $( document ).ready()
+    $(function() {
+        $("#Save").on("click", function () {
+            var loc_name = $("#location-name").val();
+            var address = $("#address-text").val();
+            var type = $("#type-text").val();
+            var source = $("#source-text").val();
+            geocoder.geocode({'address': address}, function (results, status) {
+                if (status == 'OK') {
+                    var lat = results[0].geometry.location.lat();
+                    var lng = results[0].geometry.location.lng();
+                } else {
+                    alert('Geocode was not successful for the following reason: ' + status);
+                }
+                $.ajax({
+                    url:"map.php",
+                    data:{action:'insert',title:loc_name,address:address,type:type,source:source,lat:lat,lng:lng},
+                    method:"POST",
+                    dataType:"json",
+                    success:function(){
+                        $("#responsive-modal").modal('toggle');
+                    },
+                });
+            });
+
+        });
+    });
+</script>
+<script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAO_LsXC3FeJ8gHpri7RA01LXex1kyGYf8&callback=initMap">
+</script>
+</body>
+</html>
